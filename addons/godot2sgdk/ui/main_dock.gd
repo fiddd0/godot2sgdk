@@ -92,6 +92,16 @@ func _create_palette_ui():
 	palette_btn.text = "🎨 Edit Palette"
 	palette_btn.pressed.connect(_on_palette_editor_pressed)
 	add_child(palette_btn)
+	
+	# Criar editor de paletas (inicialmente oculto)
+	var palette_editor_script = load("res://addons/godot2sgdk/ui/palette_editor.gd")
+
+	if palette_editor_script:
+		palette_editor = palette_editor_script.new()
+		palette_editor.visible = false
+		palette_editor.palette_changed.connect(_on_palette_changed)
+		add_child(palette_editor)
+
 
 	# Criar editor de paletas (inicialmente oculto)
 	palette_editor = PaletteEditor.new()
@@ -105,6 +115,10 @@ func _on_palette_editor_pressed():
 		_add_log_message("🎨 Palette editor opened")
 	else:
 		_add_log_message("🎨 Palette editor closed")
+
+# LINHA 115-125: Adicionar handler de mudança de paleta
+func _on_palette_changed():
+	_add_log_message("🎨 Palette updated - changes will affect future exports")
 	
 func _on_export_pressed():
 	_clear_log()
