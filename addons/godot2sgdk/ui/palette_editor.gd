@@ -6,7 +6,7 @@ signal palette_changed
 
 var palette_manager: PaletteManager
 var color_buttons: Array = []
-var color_pickers: Array = []
+var hex_labels: Array = []  # ✅ Array para guardar referências
 
 func _ready():
 	palette_manager = PaletteManager.new()
@@ -45,7 +45,7 @@ func _create_palette_ui():
 		color_btn.color_changed.connect(_on_color_changed.bind(i))
 		vbox.add_child(color_btn)
 		
-		# Valor HEX
+		# Valor HEX - ✅ GUARDAR REFERÊNCIA
 		var hex_label = Label.new()
 		hex_label.name = "hex_%d" % i
 		hex_label.text = _color_to_hex(palette_manager.get_color_by_index(i))
@@ -55,6 +55,7 @@ func _create_palette_ui():
 		
 		grid.add_child(vbox)
 		color_buttons.append(color_btn)
+		hex_labels.append(hex_label)  # ✅ Guardar referência
 	
 	add_child(HSeparator.new())
 	
@@ -72,21 +73,16 @@ func _create_palette_ui():
 	reset_btn.pressed.connect(_on_reset_pressed)
 	control_hbox.add_child(reset_btn)
 	
-	var load_btn = Button.new()
-	load_btn.text = "📂 Load Palette"
-	load_btn.pressed.connect(_on_load_pressed)
-	control_hbox.add_child(load_btn)
-	
 	add_child(control_hbox)
 
 func _load_default_palette():
-	# Carregar paleta padrão ou do config
+	# Tentar carregar paleta salva
 	var config_utils = load("res://addons/godot2sgdk/utils/config_utils.gd")
 	if config_utils:
 		var saved_palette = config_utils.load_palette_config()
 		if not saved_palette.is_empty():
 			palette_manager.load_custom_palette(saved_palette)
-			_update_color_buttons()
+	_update_color_buttons()
 
 func _on_color_changed(color: Color, index: int):
 	palette_manager.current_palette[index] = color
@@ -94,9 +90,9 @@ func _on_color_changed(color: Color, index: int):
 	palette_changed.emit()
 
 func _update_hex_label(index: int, color: Color):
-	var hex_label = get_node("*/hex_%d" % index)
-	if hex_label:
-		hex_label.text = _color_to_hex(color)
+	# ✅ USAR ARRAY DE REFERÊNCIAS
+	if index < hex_labels.size():
+		hex_labels[index].text = _color_to_hex(color)
 
 func _color_to_hex(color: Color) -> String:
 	return "#%02X%02X%02X" % [color.r8, color.g8, color.b8]
@@ -118,10 +114,6 @@ func _on_reset_pressed():
 	_update_color_buttons()
 	palette_changed.emit()
 
-func _on_load_pressed():
-	# TODO: Implementar carregamento de paleta personalizada
-	print("📂 Load palette functionality coming soon!")
-
 func _update_color_buttons():
 	for i in range(16):
 		if i < color_buttons.size():
@@ -131,20 +123,3 @@ func _update_color_buttons():
 
 func get_palette_manager() -> PaletteManager:
 	return palette_manager
-
-# Preview da paleta em tempo real
-func generate_preview_texture() -> Texture2D:
-	var image = Image.create(128, 128, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0, 0, 0, 0))
-	
-	var colors = palette_manager.current_palette
-	var cell_size = 32
-	
-	for i in range(16):
-		var x = (i % 8) * cell_size
-		var y = (i / 8) * cell_size
-		var color_rect = Rect2i(x, y, cell_size, cell_size)
-		image.fill_rect(color_rect, colors[i])
-	
-	var texture = ImageTexture.create_from_image(image)
-	return texture
