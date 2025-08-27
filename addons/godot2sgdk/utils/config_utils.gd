@@ -27,10 +27,10 @@ static func load_palette_config() -> Array:
 			var color = config.get_value("palette", "color_%d" % i, Color(0, 0, 0))
 			colors.append(color)
 	else:
-		# Paleta padrão se não existir config
+		# Paleta padrão se não existir config - CORREÇÃO AQUI
 		var palette_manager = load("res://addons/godot2sgdk/core/palette_manager.gd")
 		if palette_manager:
-			var default_palette = palette_manager.DEFAULT_PALETET
+			var default_palette = palette_manager.DEFAULT_PALETTE  # ✅ CORRIGIDO
 			colors = default_palette.duplicate()
 	
 	return colors
