@@ -5,6 +5,8 @@ var plugin: EditorPlugin
 var config: RefCounted
 # LINHA 6: Adicionar variável
 var palette_editor: PaletteEditor
+# LINHA 7: Adicionar variável
+var animation_exporter: RefCounted
 var map_exporter: RefCounted
 var sprite_exporter: RefCounted
 
@@ -31,6 +33,14 @@ func _ready():
 	sprite_btn.name = "SpriteBtn"
 	sprite_btn.text = "Export Sprites"
 	sprite_btn.pressed.connect(_on_sprite_export_pressed)
+
+	# NO HBOX EXISTENTE, ADICIONAR APÓS O BOTÃO DE SPRITES:
+	# NOVO BOTÃO PARA ANIMAÇÕES
+	var anim_btn = Button.new()
+	anim_btn.name = "AnimBtn"
+	anim_btn.text = "Export Animations"
+	anim_btn.pressed.connect(_on_animation_export_pressed) # NOVO MÉTODO
+
 	
 	validate_btn = Button.new()
 	validate_btn.name = "ValidateBtn"
@@ -44,6 +54,7 @@ func _ready():
 	
 	hbox.add_child(export_btn)
 	hbox.add_child(sprite_btn)
+	hbox.add_child(anim_btn) # ADICIONAR AO HBOX
 	hbox.add_child(validate_btn)
 	hbox.add_child(settings_btn)
 	add_child(hbox)
@@ -63,13 +74,16 @@ func _ready():
 	# Carregar os exportadores
 	_load_sprite_exporter()
 	_load_map_exporter()
-	
+	# Carregar exporter	
+	_load_animation_exporter()
+		
 	# Configurar interface baseada nas configurações
 	_update_ui_from_config()
 	
 	print("✅ MainDock initialized")
 	
 	_create_palette_ui()
+
 	
 func _load_map_exporter():
 	var map_exporter_script = load("res://addons/godot2sgdk/core/map_exporter.gd")
@@ -86,6 +100,15 @@ func _load_sprite_exporter():
 		_add_log_message("✅ SpriteExporter loaded successfully")
 	else:
 		_add_log_message("❌ Failed to load SpriteExporter")
+
+# LINHA 85: Novo método de carregamento
+func _load_animation_exporter():
+	var animation_exporter_script = load("res://addons/godot2sgdk/core/animation_exporter.gd")
+	if animation_exporter_script:
+		animation_exporter = animation_exporter_script.new()
+		_add_log_message("✅ AnimationExporter loaded successfully")
+	else:
+		_add_log_message("❌ Failed to load AnimationExporter")
 
 func _create_palette_ui():
 	var palette_btn = Button.new()
@@ -143,6 +166,19 @@ func _on_sprite_export_pressed():
 	
 	# Executar exportação de sprites
 	_export_sprites()
+
+func _on_animation_export_pressed():
+	_clear_log()
+	_add_log_message("🎬 Starting animation export...")
+	progress_bar.value = 10
+	
+	if animation_exporter == null:
+		_add_log_message("❌ Animation exporter not available!")
+		progress_bar.value = 0
+		return
+	
+	# Executar exportação de animações
+	_export_animations()
 
 func _on_validate_pressed():
 	_clear_log()
@@ -213,6 +249,66 @@ func _export_sprites():
 	else:
 		_add_log_message("❌ Sprite export failed!")
 		progress_bar.value = 0
+
+# ADICIONAR APÓS _export_sprites():
+func _export_animations():
+	_add_log_message("📽️ Preparing animation export...")
+	progress_bar.value = 25
+	
+	if animation_exporter == null:
+		_add_log_message("❌ Animation exporter not available!")
+		progress_bar.value = 0
+		return
+	
+	# Chamar exportação REAL de animações
+	var success = _run_real_animation_export()
+	
+	if success:
+		_add_log_message("🎉 Animation export completed successfully!")
+		progress_bar.value = 100
+		_add_log_message("📁 Animation files saved to: res://export/")
+		
+		# Listar arquivos gerados
+		_list_exported_files()
+	else:
+		_add_log_message("❌ Animation export failed!")
+		progress_bar.value = 0
+	
+	# ADICIONAR APÓS _run_real_sprite_export():
+func _run_real_animation_export() -> bool:
+	_add_log_message("🎞️ Running real animation export process...")
+	progress_bar.value = 50
+
+	# Verificar se o diretório de exportação existe
+	var export_utils = preload("res://addons/godot2sgdk/utils/export_utils.gd")
+	if export_utils:
+		export_utils.ensure_export_directory()
+		_add_log_message("✅ Export directory ready")
+	else:
+		_add_log_message("❌ Export utilities not found")
+		return false
+
+	# Exportar animações da cena atual
+	var scene_root = get_tree().edited_scene_root
+	if scene_root and animation_exporter:
+		# Chamar método de exportação do animation_exporter
+		if animation_exporter.has_method("export_animations_in_scene"):
+			_add_log_message("🎯 Calling export_animations_in_scene...")
+			var result = animation_exporter.export_animations_in_scene(scene_root, "res://export/animations.h")
+			progress_bar.value = 75
+	
+			if result.get("success", false):
+				_add_log_message("✅ Animation export successful!")
+				return true
+			else:
+				_add_log_message("❌ Animation export failed: " + result.get("message", "Unknown error"))
+				return false
+		else:
+			_add_log_message("❌ export_animations_in_scene method not found")
+			return false
+
+	_add_log_message("❌ No scene to export animations from")
+	return false
 
 func _run_real_export() -> bool:
 	_add_log_message("🔧 Running real TileMap export process...")
