@@ -6,13 +6,18 @@ var main_dock
 
 func _enter_tree():	
 	# Interface principal (RefCounted - gerenciado automaticamente)
-	var main_dock_script = load("res://addons/godot2sgdk/ui/main_dock.gd")
+	var main_dock_script = preload("res://addons/godot2sgdk/ui/main_dock.gd")
 	if main_dock_script:
 		main_dock = main_dock_script.new()
 		main_dock.plugin = self
 		add_control_to_dock(DOCK_SLOT_RIGHT_BL, main_dock)
 		# Inicializar
 		main_dock.initialize()  # ✅ CORRIGIDO
+		
+		# Criar diretório de exportação se não existir
+		var dir = DirAccess.open("res://")
+		if not dir.dir_exists("export"):
+			dir.make_dir("export")		
 		
 		print("Godot2SGDK Plugin loaded successfully!")
 	else:
