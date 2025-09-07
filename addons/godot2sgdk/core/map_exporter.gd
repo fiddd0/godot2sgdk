@@ -2,6 +2,12 @@
 extends RefCounted
 class_name MapExporter
 
+var plugin: Object
+
+func _init(plugin_ref = null):
+	plugin = plugin_ref  # ✅ AGORA ESTÁ DECLARADA
+	print("✅ MapExporter initialized" + (" with plugin" if plugin else ""))
+
 func export_tilemap_data(tilemap: TileMap) -> Dictionary:
 	var tilemap_data = {
 		"name": tilemap.name,
@@ -22,6 +28,11 @@ func export_tilemap_data(tilemap: TileMap) -> Dictionary:
 
 # Suporta ambos: TileMap (Godot 4.3-) e TileMapLayer (Godot 4.4+)
 func export_tilemaps_in_scene(scene_root: Node, export_path: String) -> Dictionary:
+	print("🎯 [MapExporter] Exporting tilemaps in scene...")
+	# ✅ CORREÇÃO: Se não fornecer path, usar das configurações
+	if export_path.is_empty():
+		export_path = _get_export_path() + "tilemaps.h"
+	# ... resto do código permanece igual ...
 	var result := {
 		"success": false,
 		"message": "",
@@ -369,7 +380,8 @@ func _generate_layer_data(layer_data: Dictionary, base_name: String, layer_idx: 
 func export_scene_manually(scene_root: Node) -> void:
 	print("🚀 [MapExporter] Starting MANUAL export...")
 	
-	var export_path = "res://export/tilemaps.h"
+	# ✅ CORREÇÃO: Usar path das configurações
+	var export_path = _get_export_path() + "tilemaps.h"
 	var result = export_tilemaps_in_scene(scene_root, export_path)
 	
 	if result.success:
@@ -377,6 +389,19 @@ func export_scene_manually(scene_root: Node) -> void:
 		print("📁 Files: ", result.exported_files)
 	else:
 		print("❌ [MapExporter] Export failed: ", result.message)
+
+# ✅ FUNÇÃO AUXILIAR NOVA (adicionar esta também)
+func _get_export_path() -> String:
+	# ✅ CORREÇÃO: Verificar se plugin existe e tem o método
+	if plugin != null and plugin.has_method("get_export_path"):
+		var path = plugin.get_export_path()
+		# Garantir que termina com /
+		if not path.ends_with("/"):
+			path += "/"
+		return path
+	
+	# Fallback para padrão
+	return "res://export/"
 
 func _save_to_file(file_path: String, content: String) -> bool:
 	var file = FileAccess.open(file_path, FileAccess.WRITE)

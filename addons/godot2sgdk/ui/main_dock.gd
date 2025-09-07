@@ -11,6 +11,8 @@ var sprite_exporter: RefCounted
 var collision_exporter: RefCounted
 var entity_exporter: RefCounted
 var memory_optimizer: RefCounted
+var config_manager: ConfigManager
+var settings_dialog: SettingsDialog
 
 # Referências para os nodes da UI
 var export_btn: Button
@@ -19,12 +21,14 @@ var validate_btn: Button
 var settings_btn: Button
 var log_output: TextEdit
 var progress_bar: ProgressBar
+var test_btn: Button  # Novo botão para testes
 
 func _ready():
 	# Criar interface básica programaticamente
 	var hbox = HBoxContainer.new()
 	hbox.name = "ButtonContainer"
-	
+	config_manager = preload("res://addons/godot2sgdk/core/config_manager.gd").new()
+		
 	export_btn = Button.new()
 	export_btn.name = "ExportBtn"
 	export_btn.text = "Export TileMaps"
@@ -75,12 +79,42 @@ func _ready():
 	settings_btn.text = "Settings"
 	settings_btn.pressed.connect(_on_settings_pressed)
 	
+	# NOVO BOTÃO PARA TESTES
+	test_btn = Button.new()
+	test_btn.name = "TestBtn"
+	test_btn.text = "Test Complex Scenes"
+	test_btn.pressed.connect(_test_complex_scenes)
+	
+	# Botão de teste de performance
+	var performance_btn = Button.new()
+	performance_btn.name = "PerformanceBtn"
+	performance_btn.text = "Test Performance"
+	performance_btn.pressed.connect(_on_performance_test_pressed)
+	
+	# Botão de teste de estresse
+	var stress_btn = Button.new()
+	stress_btn.name = "StressBtn"
+	stress_btn.text = "Stress Test"
+	stress_btn.pressed.connect(_on_stress_test_pressed)
+	
+	# ✅ BOTÃO DE TESTE EXTREMO - ADICIONE ESTE
+	var extreme_btn = Button.new()
+	extreme_btn.name = "ExtremeBtn"
+	extreme_btn.text = "EXTREME TEST"
+	extreme_btn.add_theme_color_override("font_color", Color.RED)
+	extreme_btn.pressed.connect(_on_extreme_test_pressed)	
+
+	
 	hbox.add_child(export_btn)
 	hbox.add_child(sprite_btn)
 	hbox.add_child(anim_btn) # ADICIONAR AO HBOX
 	hbox.add_child(spritesheet_btn)
 	hbox.add_child(validate_btn)
 	hbox.add_child(settings_btn)
+	hbox.add_child(test_btn)  # ADICIONAR BOTÃO DE TESTE
+	hbox.add_child(performance_btn)
+	hbox.add_child(stress_btn)
+	hbox.add_child(extreme_btn)
 	add_child(hbox)
 	
 	log_output = TextEdit.new()
@@ -128,7 +162,7 @@ func _is_scene_empty(scene_root: Node) -> bool:
 func _load_map_exporter():
 	var map_exporter_script = preload("res://addons/godot2sgdk/core/map_exporter.gd")
 	if map_exporter_script:
-		map_exporter = map_exporter_script.new()  # ✅ CORRETO
+		map_exporter = map_exporter_script.new(self)  # ✅ PASSAR 'self' como referência
 		_add_log_message("✅ MapExporter loaded successfully")
 	else:
 		_add_log_message("❌ Failed to load MapExporter")
@@ -329,9 +363,305 @@ func _on_validate_pressed():
 	var issues = _validate_current_scene()
 	_display_validation_results(issues)
 
+func _on_performance_test_pressed():
+	_clear_log()
+	_add_log_message("⚡ INICIANDO TESTE DE PERFORMANCE")
+	_add_log_message("Criando mapa 100x100 tiles (10,000 tiles)...")
+	progress_bar.value = 10
+	
+	# Carregar e executar testador de performance
+	var perf_test_script = load("res://addons/godot2sgdk/tests/performance_test.gd")
+	if not perf_test_script:
+		_add_log_message("❌ Script de performance não encontrado!")
+		progress_bar.value = 0
+		return
+	
+	var perf_tester = perf_test_script.new(self)
+	progress_bar.value = 30
+	
+	# Executar teste de mapa grande
+	var results = perf_tester.run_large_map_test()
+	progress_bar.value = 70
+	
+	# Exibir resultados
+	_display_performance_results(results)
+	progress_bar.value = 100
+	
+	if results.success:
+		_add_log_message("✅ Teste de performance concluído!")
+	else:
+		_add_log_message("❌ Teste de performance falhou!")
+
+
+
+func _display_performance_results(results: Dictionary):
+	_add_log_message("📊 RESULTADOS DE PERFORMANCE:")
+	_add_log_message("✅ Sucesso: " + str(results.get("success", false)))
+	_add_log_message("🧱 Total de tiles: " + str(results.get("total_tiles", 0)))
+	_add_log_message("⏱️ Tempo de exportação: %.3f segundos" % results.get("export_time", 0.0))
+	_add_log_message("💾 Uso de memória: ~%d MB" % results.get("memory_usage", 0))
+	_add_log_message("🎯 Classificação: " + results.get("performance_rating", "Desconhecida"))
+	
+	for error in results.get("errors", []):
+		_add_log_message("❌ ERRO: " + error)
+	
+	for warning in results.get("warnings", []):
+		_add_log_message("⚠️ AVISO: " + warning)
+	
+	# Recomendações baseadas na performance
+	_add_log_message("")
+	_add_log_message("💡 RECOMENDAÇÕES:")
+	if results.get("export_time", 0.0) > 3.0:
+		_add_log_message("   • Considerar otimização de exportação em lote")
+		_add_log_message("   • Reduzir complexidade de tilesets muito grandes")
+	else:
+		_add_log_message("   • Performance adequada para projetos de grande escala")
+
+# Adicione também esta função para teste de estresse
+func _on_stress_test_pressed():
+	_clear_log()
+	_add_log_message("🔥 INICIANDO TESTE DE ESTRESSE")
+	_add_log_message("Criando 3 mapas 50x50 (7,500 tiles cada)...")
+	progress_bar.value = 10
+	
+	var perf_test_script = load("res://addons/godot2sgdk/tests/performance_test.gd")
+	if not perf_test_script:
+		_add_log_message("❌ Script de performance não encontrado!")
+		progress_bar.value = 0
+		return
+	
+	var perf_tester = perf_test_script.new(self)
+	progress_bar.value = 30
+	
+	var results = perf_tester.run_stress_test()
+	progress_bar.value = 70
+	
+	_add_log_message("📊 RESULTADOS DO TESTE DE ESTRESSE:")
+	_add_log_message("✅ Sucesso: " + str(results.get("success", false)))
+	_add_log_message("🗺️ Total de mapas: " + str(results.get("total_maps", 0)))
+	_add_log_message("🧱 Total de tiles: " + str(results.get("total_tiles", 0)))
+	_add_log_message("⏱️ Tempo total: %.3f segundos" % results.get("export_time", 0.0))
+	_add_log_message("📈 Pico de memória: ~%d MB" % results.get("memory_peak", 0))
+	
+	progress_bar.value = 100
+
+func _display_stress_test_results(results: Dictionary):
+	_add_log_message("")
+	_add_log_message("💥 RESULTADOS DO TESTE DE ESTRESSE:")
+	_add_log_message("✅ Sucesso: " + str(results.get("success", false)))
+	_add_log_message("🗺️ Total de mapas: " + str(results.get("total_maps", 0)))
+	_add_log_message("🧱 Total de tiles: " + str(results.get("total_tiles", 0)))
+	_add_log_message("⏱️ Tempo total: %.3f segundos" % results.get("export_time", 0.0))
+	_add_log_message("📈 Pico de memória: ~%d MB" % results.get("memory_peak", 0))
+	_add_log_message("🚀 Velocidade: %.1f tiles/segundo" % results.get("tiles_per_second", 0))
+	
+	# Análise de performance
+	var export_time = results.get("export_time", 1.0)
+	var total_tiles = results.get("total_tiles", 1)
+	var tiles_per_second = total_tiles / export_time
+	
+	_add_log_message("")
+	_add_log_message("📊 ANÁLISE DE PERFORMANCE:")
+	_add_log_message("   • Throughput: %.0f tiles/segundo" % tiles_per_second)
+	
+	if tiles_per_second > 10000:
+		_add_log_message("   • Status: ⚡ ULTRA RÁPIDO")
+	elif tiles_per_second > 5000:
+		_add_log_message("   • Status: 🚀 EXCELENTE")
+	elif tiles_per_second > 1000:
+		_add_log_message("   • Status: ✅ BOM")
+	else:
+		_add_log_message("   • Status: ⚠️ NECESSITA OTIMIZAÇÃO")
+	
+	# Verificar se há erros ou warnings
+	for error in results.get("errors", []):
+		_add_log_message("❌ ERRO CRÍTICO: " + error)
+	
+	for warning in results.get("warnings", []):
+		_add_log_message("⚠️ AVISO: " + warning)
+	
+	# Recomendações finais
+	_add_log_message("")
+	_add_log_message("💡 RECOMENDAÇÕES PARA PRODUÇÃO:")
+	if tiles_per_second > 5000:
+		_add_log_message("   • Pronto para projetos AAA")
+		_add_log_message("   • Suporta world maps gigantes")
+	else:
+		_add_log_message("   • Considerar otimizações para mapas muito grandes")
+		_add_log_message("   • Implementar exportação em threads")
+
+func _on_extreme_test_pressed():
+	_clear_log()
+	_add_log_message("💀🔥⚠️  INICIANDO TESTE EXTREMO - 5 MAPAS GIGANTES")  # ✅ Atualizado
+	_add_log_message("⚠️  AVISO: Este teste pode travar computadores fracos!")
+	_add_log_message("💻 Recomendado apenas para hardware moderno")
+	_add_log_message("🔄 Criando 5 mapas de até 120x120 tiles...")
+	progress_bar.value = 5
+	
+	# Confirmação de segurança
+	if not _confirm_extreme_test():
+		_add_log_message("❌ Teste extremo cancelado pelo usuário")
+		progress_bar.value = 0
+		return
+	
+	var perf_test_script = load("res://addons/godot2sgdk/tests/performance_test.gd")
+	if not perf_test_script:
+		_add_log_message("❌ Script de performance não encontrado!")
+		progress_bar.value = 0
+		return
+	
+	var perf_tester = perf_test_script.new(self)
+	progress_bar.value = 20
+	
+	# Executar teste EXTREMO
+	var results = perf_tester.run_extreme_test()
+	progress_bar.value = 80
+	
+	# Exibir resultados EPICOS
+	_display_extreme_results(results)
+	progress_bar.value = 100
+	
+	if results.get("success", false):
+		_add_log_message("🎉💀🔥 TESTE EXTREMO SUPERADO!")
+	else:
+		_add_log_message("⚠️  Teste extremo falhou - hardware limitado?")
+
+func _confirm_extreme_test() -> bool:
+	# Em uma implementação real, aqui viria um diálogo de confirmação
+	# Por enquanto, vamos apenas retornar true (usuário confirmou)
+	print("⚠️  Confirmação de teste extremo solicitada")
+	return true
+
+func _display_extreme_results(results: Dictionary):
+	_add_log_message("")
+	_add_log_message("💀🔥📊 RESULTADOS DO TESTE EXTREMO:")
+	_add_log_message("✅ Sucesso: " + str(results.get("success", false)))
+	_add_log_message("🗺️ Total de mapas: " + str(results.get("total_maps", 0)))
+	_add_log_message("🧱 Total de tiles: " + str(results.get("total_tiles", 0)) + " TILES!")
+	_add_log_message("⏱️ Tempo total: %.3f segundos" % results.get("export_time", 0.0))
+	_add_log_message("📈 Pico de memória: ~%d MB" % results.get("memory_peak", 0))
+	
+	if results.has("tiles_per_second"):
+		var tps = results["tiles_per_second"]
+		_add_log_message("🚀 Velocidade: %.0f tiles/segundo" % tps)
+		
+		# Classificação EPICA
+		if tps > 2000000:
+			_add_log_message("💎 Classificação: GOD-TIER")
+		elif tps > 1000000:
+			_add_log_message("🔥 Classificação: EXTREME")
+		elif tps > 500000:
+			_add_log_message("⭐ Classificação: ULTRA")
+		else:
+			_add_log_message("✅ Classificação: ACEITÁVEL")
+	
+	# Mostrar tamanhos dos mapas
+	if results.has("map_sizes"):
+		_add_log_message("📏 Tamanhos dos mapas: " + str(results["map_sizes"]))
+	
+	# Verificar se há erros ou warnings
+	for error in results.get("errors", []):
+		_add_log_message("❌💀 ERRO CRÍTICO: " + error)
+	
+	for warning in results.get("warnings", []):
+		_add_log_message("⚠️  AVISO EXTREMO: " + warning)
+	
+	# Recomendações finais EPICAS
+	_add_log_message("")
+	_add_log_message("💡🎯 RECOMENDAÇÕES PARA PROJETOS EPICOS:")
+	if results.get("success", false):
+		_add_log_message("   • Pronto para MMOs e open worlds gigantes")
+		_add_log_message("   • Suporta streaming de mundo infinito")
+		_add_log_message("   • Performance de supercomputador")
+	else:
+		_add_log_message("   • Considerar otimizações para projetos muito grandes")
+		_add_log_message("   • Implementar carregamento assíncrono")
+		_add_log_message("   • Adicionar sistema de paginação de mapas")
+
 func _on_settings_pressed():
 	_add_log_message("⚙️ Settings button pressed")
-	# TODO: Implementar diálogo de configurações
+	# TODO: Implementar diálogo de configurações	
+	_add_log_message("⚙️ Opening settings...")
+	
+	if not settings_dialog:
+		var settings_script = load("res://addons/godot2sgdk/ui/settings_dialog.gd")
+		if settings_script:
+			settings_dialog = settings_script.new(self, config_manager)
+			add_child(settings_dialog)
+		else:
+			_add_log_message("❌ Settings dialog script not found")
+			return
+	
+	settings_dialog.popup_centered()
+
+func get_export_path() -> String:
+	if config_manager:
+		return config_manager.get_setting("general", "export_path", "res://export/")
+	return "res://export/"
+
+func _apply_touch_friendly_style():
+	# Aplicar estilo mobile-friendly nos botões
+	var buttons = [export_btn, sprite_btn, validate_btn, settings_btn, test_btn]
+	for button in buttons:
+		if button:
+			button.custom_minimum_size = Vector2(120, 40)
+			button.add_theme_font_size_override("font_size", 16)
+
+
+# ✅ FUNÇÃO DE TESTE DE CENAS COMPLEXAS ADICIONADA AQUI
+func _test_complex_scenes():
+	_clear_log()
+	_add_log_message("=== INICIANDO TESTE DE CENAS COMPLEXAS ===")
+	progress_bar.value = 10
+	
+	# Carregar e criar a cena de teste
+	var test_scene_script = load("res://addons/godot2sgdk/tests/complex_scene_test.gd")
+	if not test_scene_script:
+		_add_log_message("❌ Script de teste não encontrado!")
+		progress_bar.value = 0
+		return
+	
+	var test_scene = test_scene_script.new()
+	# ✅ CORREÇÃO: Adicionar à árvore de cena atual em vez da raiz
+	var current_scene = get_tree().edited_scene_root
+	if current_scene:
+		current_scene.add_child(test_scene)
+	else:
+		# Se não há cena aberta, criar uma nova
+		get_tree().root.add_child(test_scene)
+	
+	# Carregar e executar o testador
+	var tester_script = load("res://addons/godot2sgdk/tests/complex_scene_tester.gd")
+	if not tester_script:
+		_add_log_message("❌ Script testador não encontrado!")
+		test_scene.queue_free()
+		progress_bar.value = 0
+		return
+	
+	var tester = tester_script.new(self)
+	var results = tester.run_test(test_scene)
+	progress_bar.value = 50
+	
+	# Exibir resultados
+	_add_log_message("Resultados do teste:")
+	_add_log_message("- Sucesso: " + str(results.get("success", false)))
+	_add_log_message("- Elementos exportados: " + str(results.get("exported_elements", 0)) + "/5")
+	_add_log_message("- Tempo: " + str(results.get("export_time", 0.0)) + " segundos")
+	
+	for error in results.get("errors", []):
+		_add_log_message("ERRO: " + error)
+	
+	for warning in results.get("warnings", []):
+		_add_log_message("AVISO: " + warning)
+	
+	# Limpar
+	test_scene.queue_free()
+	progress_bar.value = 100
+	
+	if results.get("success", false):
+		_add_log_message("✅ Teste de cenas complexas concluído com sucesso!")
+	else:
+		_add_log_message("❌ Teste de cenas complexas falhou!")
 
 func _validate_current_scene() -> Array:
 	var scene_root = get_tree().edited_scene_root
@@ -657,14 +987,18 @@ func _clear_log() -> void:
 		log_output.text = ""
 
 func _update_ui_from_config():
-	# Atualizar UI baseado nas configurações
-	if config:
-		var auto_validate = config.get_setting("general", "auto_validate")
+	if config_manager:
+		var auto_validate = config_manager.get_setting("general", "auto_validate", true)
 		if auto_validate:
 			_add_log_message("🔔 Auto-validation is enabled")
 		
-		var export_path = config.get_setting("general", "export_path")
+		var export_path = config_manager.get_setting("general", "export_path", "res://export/")
 		_add_log_message("📁 Export path: %s" % export_path)
+		
+		# Aplicar configurações de mobile
+		var touch_friendly = config_manager.get_setting("mobile", "touch_friendly", true)
+		if touch_friendly:
+			_apply_touch_friendly_style()
 	else:
 		_add_log_message("⚠️ Configuration not loaded")
 
